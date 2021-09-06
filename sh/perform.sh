@@ -5,6 +5,6 @@ n_nodes=5
 int=1
 while(( $int<=$n_nodes ))
 do
-    /usr/local/bin/python3.7  /Users/alice1/Desktop/tju.edu.com/python/adaptive-federated-learning-master/client.py&
+    /usr/local/bin/python3.7  /Users/alice1/Desktop/tju.edu.com/tju-edge-intellengence/client.py&
      let "int++"
 done
