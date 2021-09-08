@@ -5,6 +5,6 @@ n_nodes=5
 int=1
 while(( $int<=$n_nodes ))
 do
-    /home/yinqiaoyun/anaconda3/envs/tensorflow/bin/python  ~/programe/python/tju-edge-intellengence/client.py&
+     /home/alice/anaconda3/envs/tju/bin/python  /home/alice/python/tju-edge-intellengence/client.py&
      let "int++"
 done
