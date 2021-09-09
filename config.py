@@ -10,14 +10,14 @@ single_run_results_file_path = results_file_path + '/SingleRun.csv'
 multi_run_results_file_path = results_file_path + '/MultipleRuns.csv'
 
 # Model, dataset, and control parameter configurations for MNIST with SVM
-# dataset = 'MNIST_ORIG_EVEN_ODD'  # Use for SVM model
-# model_name = 'ModelSVMSmooth'
-# control_param_phi = 0.025   # Good for MNIST with smooth SVM
+dataset = 'MNIST_ORIG_EVEN_ODD'  # Use for SVM model
+model_name = 'ModelSVMSmooth'
+control_param_phi = 0.025   # Good for MNIST with smooth SVM
 
 #Model, dataset, and control parameter configurations for MNIST with CNN
-dataset = 'MNIST_ORIG_ALL_LABELS'  # Use for CNN model
-model_name = 'ModelCNNMnist'
-control_param_phi = 0.00005   # Good for CNN
+# dataset = 'MNIST_ORIG_ALL_LABELS'  # Use for CNN model
+# model_name = 'ModelCNNMnist'
+# control_param_phi = 0.00005   # Good for CNN
 
 # Model, dataset, and control parameter configurations for CIFAR-10 with CNN
 # dataset = 'CIFAR_10'
