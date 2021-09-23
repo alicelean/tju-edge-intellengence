@@ -53,6 +53,12 @@ estimate_beta_delta_in_all_runs = False
 # theoretical bound for the **DISTRIBUTED** case.
 # For the **CENTRALIZED** case, set use_min_loss = False,
 # because convergence of the final value can be guaranteed in the centralized case.
+
+#如果为true，则表示返回与最小损失对应的权重，（如果使用随机梯度下降，则估计损失），如果为false，则返回最终的权重。
+#use_min_loss = True corresponds to the latest
+#**分布式**情况的理论界。
+#对于**集中式**情况，set use_min_loss = False,因为在集中的情况下可以保证最终值的收敛性。
+
 use_min_loss = True
 
 # Specifies the number of iterations the client uses the same minibatch, using the same minibatch can reduce

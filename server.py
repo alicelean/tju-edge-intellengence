@@ -1,6 +1,6 @@
 import socket
 import time
-
+import pandas as pd
 import numpy as np
 
 from control_algorithm.adaptive_tau import ControlAlgAdaptiveTauServer
@@ -8,6 +8,7 @@ from data_reader.data_reader import get_data
 from models.get_model import get_model
 from statistic.collect_stat import CollectStatistics
 from util.utils import send_msg, recv_msg, get_indices_each_node_case
+import result_value.value as gl
 
 # Configurations are in a separate config.py file
 from config import *
@@ -140,12 +141,17 @@ for sim in sim_runs:
             # Loop for multiple rounds of local iterations + global aggregation
 
             ###正式开始进行训练---------------------------------------------------
+
+
             while True:
+                # 当前运行中的数据存储，方便对实验结果进行分析
+                dflist = []
+                gl.COM_TIMES=gl.COM_TIMES+1
+                dflist.append(gl.COM_TIMES)
+                print('--------------------------start traning -------------------------------------------------')
 
-                print('---------------------------------------------------------------------------')
-
-                print('current tau config:', tau_config)
-
+                print('current tau config:',gl.COM_TIMES, tau_config)
+                dflist.append(tau_config)
                 time_total_all_start = time.time()
 
                 for n in range(0, n_nodes):
@@ -232,13 +238,18 @@ for sim in sim_runs:
                         tau_new_resume = tau_config
                     tau_new = 1
 
-                # Calculate time
+                # Calculate time,计算资源消耗
                 time_total_all_end = time.time()
                 time_total_all = time_total_all_end - time_total_all_start
                 time_global_aggregation_all = max(0.0, time_total_all - time_all_local_all)
-
-                print('Time for one local iteration:', time_all_local_all / tau_actual)
+                local_time=time_all_local_all / tau_actual
+                print('Time for one local iteration:', local_time)
                 print('Time for global averaging:', time_global_aggregation_all)
+                #参数存放
+                dflist.append(time_total_all)
+                dflist.append(local_time)
+                dflist.append(time_global_aggregation_all)
+                gl.DF.loc[len(gl.DF)+ 1] = dflist
 
                 if use_fixed_averaging_slots:
                     if isinstance(time_gen, (list,)):
@@ -297,6 +308,11 @@ for sim in sim_runs:
                     else:
                         is_last_round = True
 
+
+
+
+            #w_eval 是最终的模型权重数据，也就是server上的模型
+            # w_global_min_loss，最小损失对应的模型权重
             if use_min_loss:
                 w_eval = w_global_min_loss
             else:
@@ -304,3 +320,6 @@ for sim in sim_runs:
 
             stat.collect_stat_end_global_round(sim, case, tau_setup, total_time, model, train_image, train_label,
                                                test_image, test_label, w_eval, total_time_recomputed)
+
+
+    gl.DF.to_csv("/Users/alice1/Desktop/tju.edu.com/tju-edge-intellengence/result_value/result.csv")
