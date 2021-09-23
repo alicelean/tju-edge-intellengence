@@ -171,17 +171,17 @@ for sim in sim_runs:
                 data_size_local_all = []
 
                 tau_actual = 0
-
+                #对每一个节点进行操作
                 for n in range(0, n_nodes):
                     msg = recv_msg(client_sock_all[n], 'MSG_WEIGHT_TIME_SIZE_CLIENT_TO_SERVER')
                     # ['MSG_WEIGHT_TIME_SIZE_CLIENT_TO_SERVER', w, time_all_local, tau_actual, data_size_local,
                     # loss_last_global, loss_w_prev_min_loss]
-                    w_local = msg[1]
-                    time_all_local = msg[2]
+                    w_local = msg[1]#本地的模型权重
+                    time_all_local = msg[2]#本地执行的时间消耗
                     tau_actual = max(tau_actual, msg[3])  # Take max of tau because we wait for the slowest node
-                    data_size_local = msg[4]
-                    loss_local_last_global = msg[5]
-                    loss_local_w_prev_min_loss = msg[6]
+                    data_size_local = msg[4]#本地的数据量
+                    loss_local_last_global = msg[5]#最近一次的本地模型的损失
+                    loss_local_w_prev_min_loss = msg[6]#最小的本地模型的损失值
 
                     w_global += w_local * data_size_local
                     data_size_local_all.append(data_size_local)
@@ -189,13 +189,26 @@ for sim in sim_runs:
                     time_all_local_all = max(time_all_local_all, time_all_local)   #Use max. time to take into account the slowest node
 
                     if use_min_loss:
+                        #计算最近一次全局损失（F(w)=all(Fi(w)*data_size_local/data_size_total）)
                         loss_last_global += loss_local_last_global * data_size_local
+                        #计算目前的最小损失
                         if loss_local_w_prev_min_loss is not None:
                             loss_w_prev_min_loss += loss_local_w_prev_min_loss * data_size_local
                             received_loss_local_w_prev_min_loss = True
 
                 w_global /= data_size_total
+#此时的w_global已经是一个全局模型的权重参数
 
+
+
+
+
+
+
+
+
+
+#
                 if True in np.isnan(w_global):
                     print('*** w_global is NaN, using previous value')
                     w_global = w_global_prev   # If current w_global contains NaN value, use previous w_global

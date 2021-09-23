@@ -13,7 +13,7 @@ multi_run_results_file_path = results_file_path + '/MultipleRuns.csv'
 dataset = 'MNIST_ORIG_EVEN_ODD'  # Use for SVM model
 model_name = 'ModelSVMSmooth'
 control_param_phi = 0.025   # Good for MNIST with smooth SVM
-
+flag=1
 #Model, dataset, and control parameter configurations for MNIST with CNN
 # dataset = 'MNIST_ORIG_ALL_LABELS'  # Use for CNN model
 # model_name = 'ModelCNNMnist'
