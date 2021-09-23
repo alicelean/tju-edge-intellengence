@@ -36,3 +36,14 @@ When using this code for scientific publications, please kindly cite the above p
 #### Contributors
 
 This code was written by Shiqiang Wang and Tiffany Tuor.
+
+
+
+#执行程序步骤
+1.svm model
+1.1配置相关参数config.py
+    dataset = 'MNIST_ORIG_EVEN_ODD'  # Use for SVM model
+    model_name = 'ModelSVMSmooth'
+1.2执行程序
+    启动server.py
+    执行sh perform.sh（该脚本用于执行client.py）

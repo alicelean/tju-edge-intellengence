@@ -249,6 +249,7 @@ for sim in sim_runs:
                 dflist.append(time_total_all)
                 dflist.append(local_time)
                 dflist.append(time_global_aggregation_all)
+                dflist.append(loss_last_global)
                 gl.DF.loc[len(gl.DF)+ 1] = dflist
 
                 if use_fixed_averaging_slots:
@@ -322,4 +323,4 @@ for sim in sim_runs:
                                                test_image, test_label, w_eval, total_time_recomputed)
 
 
-    gl.DF.to_csv("/Users/alice1/Desktop/tju.edu.com/tju-edge-intellengence/result_value/result.csv")
+    gl.DF.to_csv(gl.PATH)

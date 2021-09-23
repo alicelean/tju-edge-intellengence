@@ -4,4 +4,5 @@ import pandas as pd
 global COM_TIMES
 COM_TIMES=1
 global DF
-DF=pd.DataFrame(columns=['COM_TIMES','tau','time_total_all','local_time','time_global_aggregation_all'])
+DF=pd.DataFrame(columns=['COM_TIMES','tau','time_total_all','local_time','time_global_aggregation_all','loss'])
+PATH="/Users/alice1/Desktop/tju.edu.com/tju-edge-intellengence/result_value/result.csv"
