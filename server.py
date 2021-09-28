@@ -1,7 +1,9 @@
+import math
 import socket
 import time
 import pandas as pd
 import numpy as np
+
 
 from control_algorithm.adaptive_tau import ControlAlgAdaptiveTauServer
 from data_reader.data_reader import get_data
@@ -65,21 +67,23 @@ for sim in sim_runs:
         indices_each_node_case = get_indices_each_node_case(n_nodes, MAX_CASE, train_label_orig)
 
     #不同分布的数据集
+    df = pd.DataFrame(columns=["sim", "case", "loss", "accuracy"])
     for case in case_range:
         #本地运行频率 tau_setup_all = [-1, 1, 2, 3, 5, 7, 10, 20, 30, 50, 70, 100]
         for tau_setup in tau_setup_all:
-
-            #统计对象的初始化
+            #tau_setup设置tau，dim_w初始化的权重的维度784
+            #stat统计对象的初始化
             stat.init_stat_new_global_round()
-
             dim_w = model.get_weight_dimension(train_image, train_label)
             #对模型的权重进行初始化
             w_global_init = model.get_init_weight(dim_w, rand_seed=sim)
             #设定全局模型参数为初始值
             w_global = w_global_init
+            # print("w_global_init", w_global_init)
+            # print("w_global", w_global)
             #全局最小的损失值
             w_global_min_loss = None
-            loss_min = np.inf
+            loss_min = np.inf#正无穷大的浮点表示
             #前一次全局的最小损失值
             prev_loss_is_min = False
             #当本地更新次数小于0的时候进行动态调整，设置本地更新次数为1
@@ -92,7 +96,6 @@ for sim in sim_runs:
                 tau_config = tau_setup
 
             if is_adapt_local or estimate_beta_delta_in_all_runs:
-
                 if tau_setup == -1:
                     ##控制算法的对象
                     control_alg = ControlAlgAdaptiveTauServer(is_adapt_local, dim_w, client_sock_all, n_nodes,
@@ -122,7 +125,7 @@ for sim in sim_runs:
                 recv_msg(client_sock_all[n], 'MSG_DATA_PREP_FINISHED_CLIENT_TO_SERVER')
 
             ##开始进行边缘节点的协作训练
-            print('Start learning')
+            print('Start learning--------------------------------------------------')
             #time_global_aggregation_all开始记录所有的数据
             time_global_aggregation_all = None
             #总的时间
@@ -160,8 +163,8 @@ for sim in sim_runs:
 
                 w_global_prev = w_global
 
-                print('Waiting for local iteration at client')
-
+                print('--------------------------------Waiting for local iteration at client------------------------------')
+                #新的全局模型参数
                 w_global = np.zeros(dim_w)
                 loss_last_global = 0.0
                 loss_w_prev_min_loss = 0.0
@@ -171,17 +174,25 @@ for sim in sim_runs:
                 data_size_local_all = []
 
                 tau_actual = 0
-                #对每一个节点进行操作
+                #新增，对每一个节点进行操作
+                w_global2=w_global
+                loss_list=[]
+                w_local_list=[]
+
+
                 for n in range(0, n_nodes):
                     msg = recv_msg(client_sock_all[n], 'MSG_WEIGHT_TIME_SIZE_CLIENT_TO_SERVER')
                     # ['MSG_WEIGHT_TIME_SIZE_CLIENT_TO_SERVER', w, time_all_local, tau_actual, data_size_local,
                     # loss_last_global, loss_w_prev_min_loss]
                     w_local = msg[1]#本地的模型权重
                     time_all_local = msg[2]#本地执行的时间消耗
+                    #tau_actual初始值，msg[3]评估出来的tau(tau_actual)
                     tau_actual = max(tau_actual, msg[3])  # Take max of tau because we wait for the slowest node
                     data_size_local = msg[4]#本地的数据量
                     loss_local_last_global = msg[5]#最近一次的本地模型的损失
                     loss_local_w_prev_min_loss = msg[6]#最小的本地模型的损失值
+
+
 
                     w_global += w_local * data_size_local
                     data_size_local_all.append(data_size_local)
@@ -196,9 +207,26 @@ for sim in sim_runs:
                             loss_w_prev_min_loss += loss_local_w_prev_min_loss * data_size_local
                             received_loss_local_w_prev_min_loss = True
 
+
+
+                    # 新增
+                    print("--------------------", loss_local_last_global, loss_local_w_prev_min_loss)
+                    loss_list.append(loss_local_last_global)
+                    w_local_list.append(w_local)
+
                 w_global /= data_size_total
 #此时的w_global已经是一个全局模型的权重参数
-
+                sum=0
+                for i in range(len(loss_list)):
+                    sum=sum+loss_list[i]
+                    print(np.log(loss_list[i]))
+                    # w_global2 += w_local_list[i] * np.log(loss_list[i])
+                #
+                # for i in range(len(loss_list)):
+                #     rate=loss_list[i]/sum
+                #     w_global2 +=w_local_list[i]*(1-rate)
+                #
+                # w_global=w_global2
 
 
 
@@ -335,5 +363,13 @@ for sim in sim_runs:
             stat.collect_stat_end_global_round(sim, case, tau_setup, total_time, model, train_image, train_label,
                                                test_image, test_label, w_eval, total_time_recomputed)
 
+        loss_final = model.loss(train_image, train_label, w_global)
+        accuracy_final = model.accuracy(test_image, test_label, w_global)
+        re_list=[sim,case,loss_final,accuracy_final]
+        print(re_list)
 
-    gl.DF.to_csv(gl.PATH)
+        #print(df)
+        df.loc[len(df) + 1] = re_list
+
+    df.to_csv(gl.PATH + "accracy.csv")
+    gl.DF.to_csv(gl.PATH+"result.csv")
