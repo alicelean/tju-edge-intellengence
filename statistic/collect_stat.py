@@ -1,5 +1,8 @@
 import numpy as np
 import os, sys
+
+import pandas as pd
+import result_value.value as gl
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from control_algorithm.adaptive_tau import ControlAlgAdaptiveTauServer
 from config import *
@@ -92,7 +95,7 @@ class CollectStatistics:
 
             self.t_values.append(total_time_recomputed)
 
-            print("***** lossValue: " + str(loss_value))
+            print("***** collect_stat_end_local_round  lossValue: " + str(loss_value))
 
             with open(self.results_file_name, 'a') as f:
                 f.write(str(case) + ',' + str(total_time_recomputed) + ',' + str(loss_value) + ','
@@ -159,6 +162,19 @@ class CollectStatistics:
                         + '\n')
                 f.close()
 
-        print('total time', total_time)
-        print('loss value', loss_final)
-        print('accuracy', accuracy_final)
+        print('case',case,'total time', total_time,'loss value', loss_final,'accuracy', accuracy_final)
+        # df = pd.DataFrame(columns=["sim", "case", "loss", "accuracy"])
+        # re_list = [sim, case, loss_final, accuracy_final]
+        # df.loc[len(df) + 1] = re_list
+        # df.to_csv(gl.PATH + "accracy.csv", mode='a')
+
+    def collect_paramas(self, sim, case, tau_setup, total_time, model, train_image, train_label,
+                                      test_image, test_label, w_eval, total_time_recomputed):
+        loss_final = model.loss(train_image, train_label, w_eval)
+        accuracy_final = model.accuracy(test_image, test_label, w_eval)
+        print('case',case,'total time', total_time,'loss value', loss_final,'accuracy', accuracy_final)
+        df = pd.DataFrame(columns=["sim", "case", "loss", "accuracy"])
+        re_list = [sim, case, loss_final, accuracy_final]
+        df.loc[len(df) + 1] = re_list
+        df.to_csv(gl.PATH + "accracy.csv", mode='a')
+
