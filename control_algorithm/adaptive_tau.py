@@ -22,6 +22,18 @@ class ControlAlgAdaptiveTauServer:
 
     def compute_new_tau(self, data_size_local_all, data_size_total, it_each_local, it_each_global, max_time,
                         step_size, tau, use_min_loss):
+        '''
+        计算动态调整算法的相关参数，然后传送给node
+        :param data_size_local_all:
+        :param data_size_total:
+        :param it_each_local:
+        :param it_each_global:
+        :param max_time:
+        :param step_size:
+        :param tau:
+        :param use_min_loss:
+        :return:
+        '''
 
         beta_adapt = 0
         delta_adapt = 0
@@ -31,6 +43,7 @@ class ControlAlgAdaptiveTauServer:
         local_grad_global_weight_all = []
 
         control_param_computed = False
+        #自适应调整
         for n in range(0, self.n_nodes):
             msg = recv_msg(self.client_sock_all[n], 'MSG_CONTROL_PARAM_COMPUTED_CLIENT_TO_SERVER')
             # ['MSG_CONTROL_PARAM_COMPUTED_CLIENT_TO_SERVER', control_param_computed]

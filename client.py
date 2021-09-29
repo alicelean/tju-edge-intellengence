@@ -72,22 +72,29 @@ try:
         else:
             control_alg = None
 
+        #前t-1时刻的最小loss对应的权重，#w_prev_min_loss更新为w_last_global，当且仅当prev_loss_is_min
         w_prev_min_loss = None
         w_last_global = None
         total_iterations = 0
 
         msg = ['MSG_DATA_PREP_FINISHED_CLIENT_TO_SERVER']
+        #msg = ['all_client_receive_init_pramras']
+
         send_msg(sock, msg)
 
         while True:
             print('---------------------------------------------------------------------------')
 
             msg = recv_msg(sock, 'MSG_WEIGHT_TAU_SERVER_TO_CLIENT')
+
+            #msg = recv_msg(sock, 'model_pramas_to_client')
+
             # ['MSG_WEIGHT_TAU_SERVER_TO_CLIENT', w_global, tau, is_last_round, prev_loss_is_min]
             w = msg[1]
             tau_config = msg[2]
             is_last_round = msg[3]
             prev_loss_is_min = msg[4]
+
 
             if prev_loss_is_min or ((w_prev_min_loss is None) and (w_last_global is not None)):
                 w_prev_min_loss = w_last_global
@@ -100,6 +107,7 @@ try:
             # Perform local iteration
             grad = None
             loss_last_global = None   # Only the loss at starting time is from global model parameter
+            #t-1时刻的权重对应的损失
             loss_w_prev_min_loss = None
 
             tau_actual = 0
@@ -152,6 +160,7 @@ try:
                     if use_min_loss:
                         if (batch_size < total_data) and (w_prev_min_loss is not None):
                             # Compute loss on w_prev_min_loss so that the batch remains the same
+                            #计算w_prev_min_损失的损失，使批次保持不变
                             loss_w_prev_min_loss = model2.loss(train_image, train_label, w_prev_min_loss, train_indices)
 
                 w = w - step_size * grad
@@ -176,6 +185,9 @@ try:
 
             msg = ['MSG_WEIGHT_TIME_SIZE_CLIENT_TO_SERVER', w, time_all_local, tau_actual, data_size_local,
                    loss_last_global, loss_w_prev_min_loss]
+
+            # msg = ['client_local_updates_paramas_to_server', w, time_all_local, tau_actual, data_size_local,
+            #        loss_last_global, loss_w_prev_min_loss]
             send_msg(sock, msg)
 
             if control_alg is not None:

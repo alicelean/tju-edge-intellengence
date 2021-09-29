@@ -47,7 +47,7 @@ single_run = False
 # this is useful for getting statistics. NOTE: Enabling this may change the communication time when using
 # real-world measurements for resource consumption
 estimate_beta_delta_in_all_runs = False
-
+flag=1
 # If true, the weight corresponding to minimum loss (the loss is estimated if using stochastic gradient descent) is
 # returned. If false, the weight at the end is returned. Setting use_min_loss = True corresponds to the latest
 # theoretical bound for the **DISTRIBUTED** case.
