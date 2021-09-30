@@ -59,7 +59,7 @@ flag=1
 #**分布式**情况的理论界。
 #对于**集中式**情况，set use_min_loss = False,因为在集中的情况下可以保证最终值的收敛性。
 
-use_min_loss = True
+use_min_loss = False
 
 # Specifies the number of iterations the client uses the same minibatch, using the same minibatch can reduce
 # the processing time at the client, but may cause a worse model accuracy.

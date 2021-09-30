@@ -77,8 +77,8 @@ for sim in sim_runs:
     for case in case_range:
         #本地运行频率 tau_setup_all = [-1, 1, 2, 3, 5, 7, 10, 20, 30, 50, 70, 100]
         aggregation_times=0
+        tau_setup_all=[-1]
         for tau_setup in tau_setup_all:
-
             #tau_setup设置tau，dim_w初始化的权重的维度784
             #stat统计对象的初始化
             stat.init_stat_new_global_round()
@@ -87,34 +87,17 @@ for sim in sim_runs:
             w_global_init = model.get_init_weight(dim_w, rand_seed=sim)
             #设定全局模型参数为初始值
             w_global = w_global_init
-            #新的方式求解全局聚合
-            w_global2=copy.deepcopy(w_global_init)
-
             #全局最小的损失值
             w_global_min_loss = None
             loss_min = np.inf#正无穷大的浮点表示
             #前一次全局的最小损失值
             prev_loss_is_min = False
             #当本地更新次数小于0的时候进行动态调整，设置本地更新次数为1
-            if tau_setup < 0:
-                is_adapt_local = True
-                tau_config = 1
-            else:
-                #否则的话不是动态调整本地更新次数那么按照tau_setup来进行下一次本地聚合
-                is_adapt_local = False
-                tau_config = tau_setup
-
-            if is_adapt_local or estimate_beta_delta_in_all_runs:
-                if tau_setup == -1:
-                    ##控制算法的对象实例化
-                    control_alg = ControlAlgAdaptiveTauServer(is_adapt_local, dim_w, client_sock_all, n_nodes,
+            is_adapt_local = True
+            tau_config = 1
+            ##控制算法的对象实例化
+            control_alg = ControlAlgAdaptiveTauServer(is_adapt_local, dim_w, client_sock_all, n_nodes,
                                                               control_param_phi, moving_average_holding_param)
-                else:
-                    raise Exception('Invalid setup of tau.')
-            else:
-                control_alg = None
-
-
             ###每个节点都要进行处理
             for n in range(0, n_nodes):
                 ##获取对应的节点数据集
@@ -125,17 +108,12 @@ for sim in sim_runs:
                        use_min_loss, sim]
                 ##发送初始数据
                 send_msg(client_sock_all[n], msg)
-
-            print('--------------------------------------All clients connected----------------------------------')
-
-            # Wait until all clients complete data preparation and sends a message back to the server
+            print('--------------------------------------All clients MSG_INIT_SERVER_TO_CLIENT connected----------------------------------')
             #接收消息，知道各个节点都已经收到了相对应的数据
             for n in range(0, n_nodes):
-
                 recv_msg(client_sock_all[n], 'MSG_DATA_PREP_FINISHED_CLIENT_TO_SERVER')
                 print("-----------------",case,tau_setup)
                 #recv_msg(client_sock_all[n], 'all_client_receive_init_pramras')
-
             ##开始进行边缘节点的协作训练
             print('Start learning--------------------------------------------------')
             #time_global_aggregation_all开始记录所有的数据
@@ -144,22 +122,18 @@ for sim in sim_runs:
             total_time = 0      # Actual total time, where use_fixed_averaging_slots has no effect
             #重新估计的时间
             total_time_recomputed = 0  # Recomputed total time using estimated time for each local and global update,
-                                        # using predefined values when use_fixed_averaging_slots = true
+            # using predefined values when use_fixed_averaging_slots = true
             it_each_local = None
             it_each_global = None
             ##是否是最后一次训练
             is_last_round = False
             is_eval_only = False
-
             tau_new_resume = None
-
             # Loop for multiple rounds of local iterations + global aggregation
-
             ###正式开始进行训练---------------------------------------------------
             # w_global2 = copy.deepcopy(w_global)
             # w_global3 = copy.deepcopy(w_global)
             print('--------------------------start traning -------------------------------------------------')
-
             while True:
                 # 当前运行中的数据存储，方便对实验结果进行分析
                 dflist = []
@@ -174,35 +148,29 @@ for sim in sim_runs:
                 pss.append(pflist)
 
                 time_total_all_start = time.time()
-
                 #将基本的信息传送给各个节点
                 for n in range(0, n_nodes):
                     msg = ['MSG_WEIGHT_TAU_SERVER_TO_CLIENT', w_global, tau_config, is_last_round, prev_loss_is_min]
                     #msg = ['model_pramas_to_client', w_global2, tau_config, is_last_round, prev_loss_is_min]
                     send_msg(client_sock_all[n], msg)
 
-                w_global_prev = w_global2
-
-                print('--------------------------------Waiting for local iteration at client------------------------------')
+                w_global_prev = w_global
                 #新的全局模型参数
                 w_global = np.zeros(dim_w)
-                w_global2 = np.zeros(dim_w)
                 loss_last_global = 0.0
                 loss_w_prev_min_loss = 0.0
                 received_loss_local_w_prev_min_loss = False
                 data_size_total = 0
                 time_all_local_all = 0
                 data_size_local_all = []
-
                 tau_actual = 0
                 #新增，对每一个节点进行操作
-
                 loss_list=[]
                 w_local_list=[]
+                print('--------------------------------Waiting for local iteration at client------------------------------')
                 for n in range(0, n_nodes):
                     msg = recv_msg(client_sock_all[n], 'MSG_WEIGHT_TIME_SIZE_CLIENT_TO_SERVER')
                     #msg = recv_msg(client_sock_all[n], 'client_local_updates_paramas_to_server')
-
                     # ['MSG_WEIGHT_TIME_SIZE_CLIENT_TO_SERVER', w, time_all_local, tau_actual, data_size_local,
                     # loss_last_global, loss_w_prev_min_loss]
                     w_local = msg[1]#本地的模型权重
@@ -212,34 +180,23 @@ for sim in sim_runs:
                     data_size_local = msg[4]#本地的数据量
                     loss_local_last_global = msg[5]#最近一次的本地模型的损失
                     loss_local_w_prev_min_loss = msg[6]#最小的本地模型的损失值
-
                     # w_global2 = w_global2 + w_local * (1-loss_local_last_global)
-                    w_global += w_local * data_size_local
                     # w_global = w_global+ w_local * (1 - loss_local_last_global)
                     data_size_local_all.append(data_size_local)
                     data_size_total += data_size_local
                     #取几个节点的消耗时间的最大值
                     time_all_local_all = max(time_all_local_all, time_all_local)   #Use max. time to take into account the slowest node
-
-                    if use_min_loss:
-
-                        #计算最近一次全局损失（F(w)=all(Fi(w)*data_size_local/data_size_total）)
-                        loss_last_global += loss_local_last_global * data_size_local
-                        #计算目前的最小损失，loss_local_w_prev_min_loss是client本地的最小损失
-                        if loss_local_w_prev_min_loss is not None:
-                            loss_w_prev_min_loss += loss_local_w_prev_min_loss * data_size_local
-                            received_loss_local_w_prev_min_loss = True
-
-
-
-                    # 新增
-                    #print("--------------------", loss_local_last_global, loss_local_w_prev_min_loss)
-                    loss_list.append(loss_local_last_global)
-                    w_local_list.append(w_local)
-
-
-
-
+                    w_global += w_local * data_size_local
+                    #计算最近一次全局损失（F(w)=all(Fi(w)*data_size_local/data_size_total）)
+                    loss_last_global += loss_local_last_global * data_size_local
+                    #计算目前的最小损失，loss_local_w_prev_min_loss是client本地的最小损失
+                    if loss_local_w_prev_min_loss is not None:
+                        loss_w_prev_min_loss += loss_local_w_prev_min_loss * data_size_local
+                        received_loss_local_w_prev_min_loss = True
+                    # # 新增
+                    # #print("--------------------", loss_local_last_global, loss_local_w_prev_min_loss)
+                    # loss_list.append(loss_local_last_global)
+                    # w_local_list.append(w_local)
                 w_global /= data_size_total
 #此时的w_global已经是一个全局模型的权重参数
                 # sum=0
@@ -259,65 +216,40 @@ for sim in sim_runs:
                 #w_global=w_global2
                 #w_global = copy.deepcopy(w_global2)
 
-
-
-
-
-
+                use_w_global_prev_due_to_nan = False
 #处理w_global is nan 的情况,则考虑用t-1时刻的全局模型
-
-
-
                 if True in np.isnan(w_global):
                     print('************************************ w_global is NaN, using previous value ******************************************')
                     w_global = w_global_prev   # If current w_global contains NaN value, use previous w_global
-                    w_global2=copy.deepcopy(w_global_prev)
                     #是否使用t-1时刻的全局参数来替代nan(当t时刻参数是nan时)
                     use_w_global_prev_due_to_nan = True
-                else:
-                    use_w_global_prev_due_to_nan = False
                 #use_min_loss=True
-
 #计算t-1时刻的全局损失loss_last_global，如果使用最小损失use_min_loss=true,
+ # 先计算t-1时刻的global loss
+                # received_loss_local_w_prev_min_loss默认Flase,
+                # 当得到client节点传送各自的损失时received_loss_local_w_prev_min_loss=True
+                loss_last_global /= data_size_total
 
-                if use_min_loss:
-                    # 先计算t-1时刻的global loss
-                    loss_last_global /= data_size_total
-#received_loss_local_w_prev_min_loss默认Flase,
-# 当得到client节点传送各自的损失时received_loss_local_w_prev_min_loss=True
 
-                    if received_loss_local_w_prev_min_loss:
+                if received_loss_local_w_prev_min_loss:
                         # 计算前t-1时刻对应的全局损失loss_min,loss_w_prev_min_loss
-                        loss_w_prev_min_loss /= data_size_total
-                        loss_min = loss_w_prev_min_loss
+                    loss_w_prev_min_loss /= data_size_total
+                    loss_min = loss_w_prev_min_loss
                      #判定t-1时刻损失和最小损失之间的关系对loss_min，w_global_min_loss，prev_loss_is_min进行更新
-                    if loss_last_global < loss_min:
-                        loss_min = loss_last_global
-                        w_global_min_loss = w_global_prev
-                        prev_loss_is_min = True
-                    else:
-                        prev_loss_is_min = False
-
-                    # print("Loss of previous global value: " + str(loss_last_global))
-                    # print("Minimum loss: " + str(loss_min))
-
-
-
+                if loss_last_global < loss_min:
+                    loss_min = loss_last_global
+                    w_global_min_loss = w_global_prev
+                    prev_loss_is_min = True
+                else:
+                    prev_loss_is_min = False
                 # If use_w_global_prev_due_to_nan, then use tau = 1 for next round
                 #当我们不适用t-1时刻的权重参数时，自适应算法计算相关参数
                 #计算 tau_new
                 if not use_w_global_prev_due_to_nan:
-                    if control_alg is not None:
-                        # Only update tau if use_w_global_prev_due_to_nan is False
-                        tau_new = control_alg.compute_new_tau(data_size_local_all, data_size_total,
+                # Only update tau if use_w_global_prev_due_to_nan is False
+                    tau_new = control_alg.compute_new_tau(data_size_local_all, data_size_total,
                                                               it_each_local, it_each_global, max_time,
                                                               step_size, tau_config, use_min_loss)
-                    else:
-                        if tau_new_resume is not None:
-                            tau_new = tau_new_resume
-                            tau_new_resume = None
-                        else:
-                            tau_new = tau_config
                 else:
                     if tau_new_resume is None:
                         tau_new_resume = tau_config
@@ -339,7 +271,7 @@ for sim in sim_runs:
                 dflist.append(loss_last_global)
                 gl.DF.loc[len(gl.DF)+ 1] = dflist
 
-               #计算 it_each_local，it_each_global
+               #用time_gen，tau_actual，time_global_aggregation_all，time_all_local_all计算 it_each_local，it_each_global时间
                 if use_fixed_averaging_slots:
                     if isinstance(time_gen, (list,)):
                         t_g = time_gen[case]
@@ -353,36 +285,26 @@ for sim in sim_runs:
 
                 #Compute number of iterations is current slot
                 total_time_recomputed += it_each_local * tau_actual + it_each_global
-
                 #Compute time in current slot
                 total_time += time_total_all
-
                 stat.collect_stat_end_local_round(case, tau_actual, it_each_local, it_each_global, control_alg, model,
                                                   train_image, train_label, test_image, test_label, w_global,
                                                   total_time_recomputed)
 
                 # Check remaining resource budget (use a smaller tau if the remaining time is not sufficient)
                 is_last_round_tmp = False
+                tmp_time_for_executing_remaining = total_time_recomputed + it_each_local * (tau_new + 1) + it_each_global * 2
 
-                if use_min_loss:
-                    tmp_time_for_executing_remaining = total_time_recomputed + it_each_local * (tau_new + 1) + it_each_global * 2
-                else:
-                    tmp_time_for_executing_remaining = total_time_recomputed + it_each_local * tau_new + it_each_global
 
                 #资源消耗统计，如果资源没有消耗完则tau_config = tau_new，否则设置最后一个is_last_round_tmp
                 if tmp_time_for_executing_remaining < max_time:
                     tau_config = tau_new
                 else:
-                    if use_min_loss:  # Take into account the additional communication round in the end
-                        tau_config = int((max_time - total_time_recomputed - 2 * it_each_global - it_each_local) / it_each_local)
-                    else:
-                        tau_config = int((max_time - total_time_recomputed - it_each_global) / it_each_local)
-
+                    tau_config = int((max_time - total_time_recomputed - 2 * it_each_global - it_each_local) / it_each_local)
                     if tau_config < 1:
                         tau_config = 1
                     elif tau_config > tau_new:
                         tau_config = tau_new
-
                     is_last_round_tmp = True
 
                 if is_last_round:
@@ -395,19 +317,13 @@ for sim in sim_runs:
                     is_last_round = True
 
                 if is_last_round_tmp:
-                    if use_min_loss:
-                        is_eval_only = True
-                    else:
-                        is_last_round = True
+                    is_eval_only = True
+
 
             aggregation_times=aggregation_times+1
             #w_eval 是最终的模型权重数据，也就是server上的模型
             # w_global_min_loss，最小损失对应的模型权重
-            if use_min_loss:
-                w_eval = w_global_min_loss
-            else:
-                w_eval = w_global
-
+            w_eval = w_global_min_loss
             # w_eval = copy.deepcopy(w_global2)
             # w_global_prev=copy.deepcopy(w_global2)
             stat.collect_stat_end_global_round(sim, case, tau_setup, total_time, model, train_image, train_label,
