@@ -22,6 +22,7 @@ sim_prev = None
 
 try:
     while True:
+        #接受数据
         msg = recv_msg(sock, 'MSG_INIT_SERVER_TO_CLIENT')
         # ['MSG_INIT_SERVER_TO_CLIENT', model_name, dataset, num_iterations_with_same_minibatch_for_tau_equals_one, step_size, batch_size,
         # total_data, use_control_alg, indices_this_node, read_all_data_for_stochastic, use_min_loss, sim]
